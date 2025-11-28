@@ -8,6 +8,7 @@
 - Python > 3.10
 - FastMCP SDK
 - uv package manager
+- Use the MacOSX 'screencapture' CLI utility for screenshoots
 
 ---
 
@@ -20,7 +21,7 @@
 - `move_window` - Move the focused window to a different workspace, monitor or position
 - `resize_window` - Resize the focused window (smart, width, height adjustments)
 - `close_window` - Close the focused window or a specific window by ID
-- `fullscreen_toggle` - Toggle fullscreen mode for the focused window
+- `fullscreen_toggle` - Toggle fullscreen mode for the focused window. NOTE: do not use macosx-native-fullscreen
 - `minimize_window` - Minimize a window
 
 ## Layout Management Tools
@@ -28,6 +29,10 @@
 - `split_window` - Split the current container horizontally or vertically
 - `flatten_workspace` - Flatten the workspace tree structure
 - `balance_sizes` - Balance window sizes in the current workspace
+
+## Capture Tools
+- `capture_window` - Capture the content of the window that currently has the focus as a screenshot
+- `capture_workspace` - capture the content of the currently focussed workspace (and monitor, if more than one) as a screenshot
 
 ---
 
@@ -48,12 +53,11 @@
 
 ## Window Organization Prompts
 - `organize_windows` - "Help me organize my current windows efficiently based on the apps I have open"
-- `focus_mode` - "Set up a focus mode by moving distracting apps to a separate workspace"
+- `focus_mode` - "Rearrange the windows in the current workspace so that the window that currently has the focus is most prominent but other windows remain visible / accessible, making use of the capture tool functionality"
 - `presentation_layout` - "Arrange my windows for a presentation or screen sharing session"
 
-## Troubleshooting Prompts
-- `debug_layout` - "Help me understand why my window layout isn't working as expected"
-- `find_window` - "Help me find a specific window that I've lost track of"
+## Development  Prompts
+- `debug_app_gui` - "Debug the GUI of an app under development by comparing what is expected vs what is actually on screen, using the capture tool functionality"
 
 # Prompts to consider for the future (DO NOT IMPLEMENT)
 ## Workspace Setup Prompts

@@ -864,53 +864,7 @@ After suggesting, ask for confirmation before making changes.
 
 ### `focus_mode`
 
-Set up a focus mode by moving distracting apps to a separate workspace.
-
-**Description:** "Set up a focus mode by moving distracting apps to a separate workspace"
-
-**Arguments:**
-
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `distracting_apps` | string[] | No | List of app names to consider distracting (defaults to common social/communication apps) |
-
-**Example Interaction:**
-
-```
-User: /focus_mode
-Assistant: I'll help you set up focus mode. Let me check your current windows...
-
-I found these potentially distracting apps:
-- Slack (workspace 2)
-- Mail (workspace 2)
-- Messages (workspace 1)
-- Discord (workspace 3)
-
-I'll move these to a new "distraction" workspace and you can switch back when needed.
-
-Actions taken:
-1. Created workspace "distraction"
-2. Moved Slack, Mail, Messages, and Discord to "distraction"
-3. Focused back on your main workspace
-
-Focus mode is now active. Use `focus_workspace("distraction")` when you're ready to check messages.
-```
-
-**Prompt Template:**
-
-```
-Help the user focus by identifying and isolating distracting applications.
-
-Default distracting apps: Slack, Discord, Messages, Mail, Twitter, Facebook,
-Instagram, TikTok, YouTube, Netflix, Spotify
-
-Steps:
-1. List all windows using aerospace://windows
-2. Identify windows matching distracting app patterns
-3. Create or use a "distraction" workspace
-4. Move distracting windows to that workspace
-5. Return focus to the user's work workspace
-```
+Update this section based on SPEC.md
 
 ---
 
@@ -956,82 +910,9 @@ workspace 2 if you need to run commands during the demo.
 
 ---
 
-### `debug_layout`
+### `debug_app_gui`
 
-Help understand why a window layout isn't working as expected.
-
-**Description:** "Help me understand why my window layout isn't working as expected"
-
-**Arguments:**
-
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `issue` | string | No | Description of the layout problem |
-
-**Example Interaction:**
-
-```
-User: /debug_layout issue="my windows keep overlapping"
-Assistant: I'll help debug your layout. Let me examine the current state...
-
-**Window Tree Analysis:**
-```
-Workspace "1" (h_tiles)
-├── Firefox [floating: true] ← Issue: This window is floating!
-├── Container (v_tiles)
-│   ├── Terminal
-│   └── VS Code
-└── Notes [floating: true] ← Issue: This window is also floating!
-```
-
-**Problems Found:**
-1. Firefox and Notes are set to floating mode, causing them to overlap tiled windows
-2. This often happens when apps are configured to launch as floating in aerospace.toml
-
-**Suggested Fixes:**
-1. Convert floating windows to tiling: `set_layout(layout="tiling")`
-2. Or update your aerospace.toml to not auto-float these apps
-
-Would you like me to convert the floating windows to tiling mode?
-```
-
----
-
-### `find_window`
-
-Help find a specific window that has been lost track of.
-
-**Description:** "Help me find a specific window that I've lost track of"
-
-**Arguments:**
-
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `search` | string | No | App name or window title to search for |
-
-**Example Interaction:**
-
-```
-User: /find_window search="zoom"
-Assistant: I'll search for windows matching "zoom"...
-
-**Found 2 matching windows:**
-
-1. **zoom.us** - "Zoom Meeting" (window_id: 4521)
-   - Workspace: 3
-   - Monitor: Built-in Retina Display
-   - Status: Minimized
-
-2. **zoom.us** - "Zoom" (window_id: 4522)
-   - Workspace: 3
-   - Monitor: Built-in Retina Display
-   - Status: Normal
-
-Would you like me to:
-- Focus the Zoom Meeting window?
-- Move it to your current workspace?
-- Unminimize it?
-```
+Update this section based on SPEC.md
 
 ---
 

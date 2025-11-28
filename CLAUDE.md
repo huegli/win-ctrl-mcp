@@ -15,17 +15,7 @@ This repository is at the high level design state.
 
 ## Installation
 
-### 1. Install uv (if not already installed)
-
-```bash
-# macOS/Linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Or via Homebrew
-brew install uv
-```
-
-### 2. Clone and set up the project
+### 1. Clone and set up the project
 
 ```bash
 git clone https://github.com/huegli/win-ctrl-mcp.git
@@ -35,7 +25,7 @@ cd win-ctrl-mcp
 uv sync
 ```
 
-### 3. Install development dependencies
+### 2. Install development dependencies
 
 ```bash
 uv sync --dev
@@ -83,8 +73,8 @@ uv run python -m win_ctrl_mcp
 The [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) is useful for debugging:
 
 ```bash
-# Install and run the inspector
-npx @modelcontextprotocol/inspector uv run python -m win_ctrl_mcp
+# Run the inspector
+mcp-inspector uv run python -m win_ctrl_mcp
 ```
 
 ### Common Debug Techniques
