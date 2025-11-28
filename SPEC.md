@@ -34,6 +34,18 @@
 - `capture_window` - Capture the content of the window that currently has the focus as a screenshot
 - `capture_workspace` - capture the content of the currently focussed workspace (and monitor, if more than one) as a screenshot
 
+## Display Information Tools
+- `get_display_info` - Returns detailed information about all connected displays (resolution, scale factor, size, position, PPI)
+- `get_display_category` - Returns simplified display configuration category (small_single, medium_single, large_single, dual_display, triple_plus) with recommended strategy
+
+## Smart Focus Tools
+- `apply_focus_preset` - Apply a predefined focus layout based on display category
+- `save_focus_preset` - Save current window arrangement as a named focus preset
+- `load_focus_preset` - Load and apply a previously saved focus preset
+- `resize_window_optimal` - Resize window to optimal dimensions based on content type (code_editor, browser, terminal, document)
+- `set_window_zone` - Position window in a named zone (center_focus, left_reference, right_reference) rather than explicit coordinates
+- `move_app_category_to_monitor` - Move all windows of an app category (communication, development, reference, media) to a specific monitor
+
 ---
 
 # Resources to implement
@@ -46,6 +58,8 @@
 - `aerospace://monitors` - List of all monitors
 - `aerospace://tree` - Current window tree structure
 - `aerospace://focused` - Currently focused window/workspace info
+- `aerospace://displays` - Complete display configuration (resolution, scale, size, arrangement, category)
+- `aerospace://displays/{display_id}` - Individual display details including assigned workspaces
 
 ---
 
@@ -53,7 +67,7 @@
 
 ## Window Organization Prompts
 - `organize_windows` - "Help me organize my current windows efficiently based on the apps I have open"
-- `focus_mode` - "Rearrange the windows in the current workspace so that the window that currently has the focus is most prominent but other windows remain visible / accessible, making use of the capture tool functionality"
+- `smart_focus` - "Display-aware focus mode that adapts window arrangement based on display configuration (single small/medium/large display, dual display, triple+ displays). Makes the focused window prominent while keeping reference windows accessible, using different strategies per display category. Supports presets, undo, and batch operations."
 - `presentation_layout` - "Arrange my windows for a presentation or screen sharing session"
 
 ## Development  Prompts

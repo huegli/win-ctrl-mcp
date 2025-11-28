@@ -11,6 +11,8 @@ This document describes the API for the AeroSpace Window Manager MCP Server, inc
    - [Window Management](#window-management-tools)
    - [Layout Management](#layout-management-tools)
    - [Capture Tools](#capture-tools)
+   - [Display Information Tools](#display-information-tools)
+   - [Smart Focus Tools](#smart-focus-tools)
 3. [Resources](#resources)
 4. [Prompts](#prompts)
 5. [Error Handling](#error-handling)
@@ -650,6 +652,401 @@ screencapture -D 1 /path/to/output.png
 
 ---
 
+### Display Information Tools
+
+#### `get_display_info`
+
+Returns detailed information about all connected displays.
+
+**Parameters:**
+
+None.
+
+**Returns:**
+
+```json
+{
+  "displays": [
+    {
+      "id": 1,
+      "name": "Built-in Retina Display",
+      "resolution": {"width": 2560, "height": 1600},
+      "scale_factor": 2.0,
+      "effective_resolution": {"width": 1280, "height": 800},
+      "size_inches": 14.2,
+      "is_primary": true,
+      "is_builtin": true,
+      "position": {"x": 0, "y": 0},
+      "ppi": 218
+    },
+    {
+      "id": 2,
+      "name": "DELL U2720Q",
+      "resolution": {"width": 3840, "height": 2160},
+      "scale_factor": 1.5,
+      "effective_resolution": {"width": 2560, "height": 1440},
+      "size_inches": 27,
+      "is_primary": false,
+      "is_builtin": false,
+      "position": {"x": 1280, "y": -320},
+      "ppi": 163
+    }
+  ],
+  "arrangement": "horizontal",
+  "total_effective_pixels": 5765120,
+  "category": "dual_display"
+}
+```
+
+**Examples:**
+
+```python
+# Get all display information
+info = await get_display_info()
+print(f"Display category: {info['category']}")
+print(f"Number of displays: {len(info['displays'])}")
+```
+
+---
+
+#### `get_display_category`
+
+Returns simplified display configuration category with recommended focus strategy.
+
+**Parameters:**
+
+None.
+
+**Returns:**
+
+```json
+{
+  "category": "dual_display",
+  "primary_size": "medium",
+  "secondary_sizes": ["large"],
+  "recommended_strategy": "primary_focus_secondary_reference",
+  "description": "Focus window fullscreen on primary, reference windows tiled on secondary"
+}
+```
+
+**Display Categories:**
+
+| Category | Description | Recommended Strategy |
+|----------|-------------|---------------------|
+| `small_single` | ≤15", ≤1920x1080 | Fullscreen focus, workspaces for others |
+| `medium_single` | 15-24", up to 2560x1440 | 70/30 split with sidebar |
+| `large_single` | ≥27", ≥2560x1440 | Centered focus with flanking reference |
+| `dual_display` | Two monitors | Focus on primary, reference on secondary |
+| `triple_plus` | Three or more monitors | Dedicated monitors per purpose |
+
+**Examples:**
+
+```python
+# Quick category check for focus mode decisions
+category = await get_display_category()
+if category['category'] == 'small_single':
+    # Use fullscreen strategy
+    await fullscreen_toggle()
+elif category['category'] == 'dual_display':
+    # Use multi-monitor strategy
+    await apply_focus_preset(preset="dual_monitor_focus")
+```
+
+---
+
+### Smart Focus Tools
+
+#### `apply_focus_preset`
+
+Apply a predefined or saved focus layout based on display category.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `preset` | string | Yes | Preset name: `auto`, `small_single_focus`, `medium_split`, `large_centered`, `dual_monitor_focus`, `triple_monitor_focus`, or a saved preset name |
+| `focus_window_id` | integer | No | Window to focus (defaults to currently focused) |
+| `reference_apps` | string[] | No | Apps to keep visible as reference |
+| `hide_communication` | boolean | No | Move communication apps to separate workspace |
+
+**Returns:**
+
+```json
+{
+  "success": true,
+  "preset_applied": "dual_monitor_focus",
+  "display_category": "dual_display",
+  "layout": {
+    "focus_window": {
+      "window_id": 1234,
+      "monitor": 1,
+      "arrangement": "fullscreen"
+    },
+    "reference_windows": [
+      {"window_id": 5678, "monitor": 2, "arrangement": "tiled"},
+      {"window_id": 9012, "monitor": 2, "arrangement": "tiled"}
+    ],
+    "hidden_windows": [
+      {"window_id": 3456, "moved_to_workspace": "communication"}
+    ]
+  }
+}
+```
+
+**Examples:**
+
+```python
+# Auto-detect best preset based on display configuration
+await apply_focus_preset(preset="auto")
+
+# Apply specific preset with options
+await apply_focus_preset(
+    preset="dual_monitor_focus",
+    reference_apps=["Terminal", "Chrome"],
+    hide_communication=True
+)
+```
+
+---
+
+#### `save_focus_preset`
+
+Save the current window arrangement as a named focus preset.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `name` | string | Yes | Name for the preset |
+| `description` | string | No | Human-readable description |
+
+**Returns:**
+
+```json
+{
+  "success": true,
+  "preset": {
+    "name": "coding_focus",
+    "description": "VS Code focused, terminal on side",
+    "display_category": "medium_single",
+    "created_at": "2025-01-15T10:30:00Z",
+    "window_count": 4
+  }
+}
+```
+
+**Examples:**
+
+```python
+# Save current arrangement
+await save_focus_preset(
+    name="coding_focus",
+    description="VS Code focused, terminal on side"
+)
+```
+
+---
+
+#### `load_focus_preset`
+
+Load and apply a previously saved focus preset.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `name` | string | Yes | Name of the preset to load |
+| `adapt_to_displays` | boolean | No | Adapt preset if display config changed (default: true) |
+
+**Returns:**
+
+```json
+{
+  "success": true,
+  "preset_loaded": "coding_focus",
+  "adapted": false,
+  "windows_arranged": 4
+}
+```
+
+**Examples:**
+
+```python
+# Load a saved preset
+await load_focus_preset(name="coding_focus")
+
+# Load with adaptation disabled (fail if displays don't match)
+await load_focus_preset(name="coding_focus", adapt_to_displays=False)
+```
+
+---
+
+#### `resize_window_optimal`
+
+Resize a window to optimal dimensions based on its content type.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `window_id` | integer | No | Window to resize (defaults to focused) |
+| `content_type` | string | Yes | Content type: `code_editor`, `browser`, `terminal`, `document`, `communication` |
+| `max_width_percent` | integer | No | Maximum width as percentage of screen (default: 80) |
+| `min_width_percent` | integer | No | Minimum width as percentage of screen (default: 40) |
+
+**Returns:**
+
+```json
+{
+  "success": true,
+  "window_id": 1234,
+  "content_type": "code_editor",
+  "new_dimensions": {
+    "width": 1400,
+    "height": 900,
+    "optimal_chars_per_line": 120
+  }
+}
+```
+
+**Optimal Widths by Content Type:**
+
+| Content Type | Optimal Width | Rationale |
+|--------------|---------------|-----------|
+| `code_editor` | 100-140 chars | Standard code line length |
+| `browser` | 1200-1400px | Responsive breakpoint |
+| `terminal` | 80-120 chars | Traditional terminal width |
+| `document` | 60-80 chars | Readable prose line length |
+| `communication` | 400-600px | Chat/sidebar width |
+
+**Examples:**
+
+```python
+# Resize VS Code to optimal coding width
+await resize_window_optimal(content_type="code_editor")
+
+# Resize with constraints
+await resize_window_optimal(
+    content_type="browser",
+    max_width_percent=70,
+    min_width_percent=50
+)
+```
+
+---
+
+#### `set_window_zone`
+
+Position a window in a named zone rather than using explicit coordinates.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `window_id` | integer | No | Window to position (defaults to focused) |
+| `zone` | string | Yes | Zone name: `center_focus`, `left_reference`, `right_reference`, `top_reference`, `bottom_reference`, `floating_pip` |
+| `monitor` | string | No | Monitor: `primary`, `secondary`, or monitor ID (default: `primary`) |
+
+**Returns:**
+
+```json
+{
+  "success": true,
+  "window_id": 1234,
+  "zone": "center_focus",
+  "monitor": "primary",
+  "bounds": {
+    "x": 320,
+    "y": 0,
+    "width": 1920,
+    "height": 1080
+  }
+}
+```
+
+**Available Zones:**
+
+| Zone | Description |
+|------|-------------|
+| `center_focus` | Center of screen, 60-70% width |
+| `left_reference` | Left side, 20-30% width |
+| `right_reference` | Right side, 20-30% width |
+| `top_reference` | Top half of screen |
+| `bottom_reference` | Bottom half of screen |
+| `floating_pip` | Small floating window in corner |
+
+**Examples:**
+
+```python
+# Position main editor in center focus zone
+await set_window_zone(zone="center_focus")
+
+# Position terminal on right side of secondary monitor
+await set_window_zone(
+    window_id=5678,
+    zone="right_reference",
+    monitor="secondary"
+)
+```
+
+---
+
+#### `move_app_category_to_monitor`
+
+Move all windows belonging to an application category to a specific monitor.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `category` | string | Yes | App category: `communication`, `development`, `reference`, `media` |
+| `monitor` | string | Yes | Target monitor: `primary`, `secondary`, `tertiary`, or monitor ID |
+| `layout` | string | No | Layout for moved windows: `tiled`, `accordion`, `stacked` (default: `tiled`) |
+
+**Returns:**
+
+```json
+{
+  "success": true,
+  "category": "communication",
+  "monitor": "secondary",
+  "windows_moved": [
+    {"window_id": 1234, "app_name": "Slack"},
+    {"window_id": 5678, "app_name": "Mail"},
+    {"window_id": 9012, "app_name": "Messages"}
+  ],
+  "layout_applied": "tiled"
+}
+```
+
+**App Categories:**
+
+| Category | Included Apps |
+|----------|---------------|
+| `communication` | Slack, Discord, Mail, Messages, Teams, Zoom |
+| `development` | VS Code, Xcode, Terminal, iTerm, IntelliJ |
+| `reference` | Chrome, Safari, Firefox, Notes, Notion, Obsidian |
+| `media` | Spotify, Music, YouTube, VLC, Photos |
+
+**Examples:**
+
+```python
+# Move all communication apps to secondary monitor
+await move_app_category_to_monitor(
+    category="communication",
+    monitor="secondary"
+)
+
+# Move reference apps to tertiary monitor in accordion layout
+await move_app_category_to_monitor(
+    category="reference",
+    monitor="tertiary",
+    layout="accordion"
+)
+```
+
+---
+
 ## Resources
 
 Resources provide read-only access to AeroSpace state information. They use URI templates and return JSON data.
@@ -928,6 +1325,88 @@ Get currently focused window, workspace, and monitor info.
 
 ---
 
+### `aerospace://displays`
+
+Complete display configuration information.
+
+**URI:** `aerospace://displays`
+
+**Response:**
+
+```json
+{
+  "displays": [
+    {
+      "id": 1,
+      "name": "Built-in Retina Display",
+      "resolution": {"width": 2560, "height": 1600},
+      "scale_factor": 2.0,
+      "effective_resolution": {"width": 1280, "height": 800},
+      "size_inches": 14.2,
+      "is_primary": true,
+      "is_builtin": true,
+      "position": {"x": 0, "y": 0},
+      "ppi": 218,
+      "workspaces": ["1", "2", "3"]
+    },
+    {
+      "id": 2,
+      "name": "DELL U2720Q",
+      "resolution": {"width": 3840, "height": 2160},
+      "scale_factor": 1.5,
+      "effective_resolution": {"width": 2560, "height": 1440},
+      "size_inches": 27,
+      "is_primary": false,
+      "is_builtin": false,
+      "position": {"x": 1280, "y": -320},
+      "ppi": 163,
+      "workspaces": ["dev", "mail"]
+    }
+  ],
+  "arrangement": "horizontal",
+  "total_effective_pixels": 5765120,
+  "category": "dual_display",
+  "category_description": "Two monitors: focus on primary, reference on secondary"
+}
+```
+
+---
+
+### `aerospace://displays/{display_id}`
+
+Individual display details including assigned workspaces.
+
+**URI Template:** `aerospace://displays/{display_id}`
+
+**Parameters:**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `display_id` | integer | The display ID |
+
+**Response:**
+
+```json
+{
+  "id": 2,
+  "name": "DELL U2720Q",
+  "resolution": {"width": 3840, "height": 2160},
+  "scale_factor": 1.5,
+  "effective_resolution": {"width": 2560, "height": 1440},
+  "size_inches": 27,
+  "is_primary": false,
+  "is_builtin": false,
+  "position": {"x": 1280, "y": -320},
+  "ppi": 163,
+  "workspaces": ["dev", "mail"],
+  "focused_workspace": "dev",
+  "window_count": 4,
+  "size_category": "large"
+}
+```
+
+---
+
 ## Prompts
 
 Prompts provide pre-configured interaction patterns for common window management tasks.
@@ -981,55 +1460,93 @@ After suggesting, ask for confirmation before making changes.
 
 ---
 
-### `focus_mode`
+### `smart_focus`
 
-Rearrange windows to make the focused window most prominent while keeping others accessible.
+Display-aware focus mode that adapts window arrangement based on display configuration.
 
-**Description:** "Rearrange the windows in the current workspace so that the window that currently has the focus is most prominent but other windows remain visible/accessible, making use of the capture tool functionality"
+**Description:** "Display-aware focus mode that adapts window arrangement based on display configuration (single small/medium/large display, dual display, triple+ displays). Makes the focused window prominent while keeping reference windows accessible, using different strategies per display category. Supports presets, undo, and batch operations."
 
 **Arguments:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `prominence` | string | No | How prominent: `maximize`, `large`, `balanced` (defaults to `large`) |
+| `strategy` | string | No | Strategy: `auto`, `maximize`, `balanced`, `minimal` (default: `auto`) |
+| `keep_visible` | string[] | No | Apps to keep visible (comma-separated) |
+| `reference_monitor` | string | No | Which monitor for reference windows |
+| `save_as` | string | No | Save this arrangement as a named preset |
+| `undo` | boolean | No | Restore previous arrangement |
+
+**Display Category Strategies:**
+
+| Category | Strategy |
+|----------|----------|
+| `small_single` (≤15") | Focus fullscreen, others to adjacent workspace |
+| `medium_single` (15-24") | 70/30 split with sidebar |
+| `large_single` (≥27") | 60% centered focus, flanking reference |
+| `dual_display` | Focus fullscreen on primary, reference tiled on secondary |
+| `triple_plus` | Dedicated monitors: primary=focus, secondary=reference, tertiary=communication |
 
 **Example Interaction:**
 
 ```
-User: /focus_mode
+User: /smart_focus
 
-Assistant: I'll help you focus on your current work. Let me analyze your workspace...
+Assistant: I'll help you focus. First, let me analyze your display configuration...
 
-Current workspace "dev" has 4 windows:
-- VS Code: "project - Visual Studio Code" [FOCUSED]
-- Terminal: "zsh"
-- Chrome: "Documentation"
-- Notes: "Meeting Notes"
+**Display Configuration Detected:**
+- Category: `dual_display`
+- Primary: Built-in Retina Display (14", 1280x800 effective)
+- Secondary: DELL U2720Q (27", 2560x1440 effective)
+- Recommended strategy: Focus on primary, reference on secondary
 
-I'll rearrange to make VS Code most prominent while keeping others accessible:
+**Current Windows:**
+- VS Code: "project - Visual Studio Code" [FOCUSED] - Primary monitor
+- Terminal: "zsh" - Primary monitor
+- Chrome: "Documentation" - Secondary monitor
+- Slack: "General" - Secondary monitor
+- Notes: "Meeting Notes" - Secondary monitor
+
+**Applying dual_display focus strategy:**
 
 Actions taken:
-1. Captured current layout for reference
-2. Set VS Code to take 70% of screen width
-3. Stacked Terminal, Chrome, and Notes in remaining 30%
-4. All windows remain visible and quickly accessible
+1. Captured current layout (saved for undo)
+2. VS Code → fullscreen on primary monitor
+3. Terminal, Chrome, Notes → tiled on secondary monitor
+4. Slack → moved to "communication" workspace
 
-Your focus layout is ready. The other windows are collapsed but one click away.
+Your smart focus is ready:
+- Primary monitor: VS Code (fullscreen focus)
+- Secondary monitor: Reference windows (Terminal, Chrome, Notes)
+- Communication apps isolated on separate workspace
+
+Use `/smart_focus --undo` to restore previous layout.
+Would you like to save this as a preset? Use `--save-as "coding"`
 ```
 
 **Prompt Template:**
 
 ```
-Help the user focus on their current task by making the focused window prominent.
+Display-aware focus mode that adapts to the user's monitor configuration.
 
-Steps:
-1. Use capture_window to capture current state for reference
-2. Identify the focused window using aerospace://focused
-3. Resize the focused window to take majority of screen space
-4. Arrange other windows in accordion or stacked layout
-5. Ensure all windows remain accessible (not hidden)
+Decision Flow:
+1. Query aerospace://displays to determine display category
+2. Query aerospace://focused to identify the focus target window
+3. Query aerospace://windows to inventory all windows
+4. Categorize windows: focus, reference, communication, other
+5. Select and apply strategy based on display category:
 
-The capture functionality helps verify the layout looks correct.
+   - small_single: Focus fullscreen, others to adjacent workspace
+   - medium_single: 70/30 split, reference in sidebar accordion
+   - large_single: 60% centered, reference flanking both sides
+   - dual_display: Focus fullscreen on primary, reference tiled on secondary
+   - triple_plus: Focus=primary, reference=secondary, communication=tertiary
+
+6. Use batch operations for smooth transitions
+7. Capture final state for confirmation
+8. Offer to save as preset
+
+Tools used: get_display_category, apply_focus_preset, set_window_zone,
+move_app_category_to_monitor, capture_workspace
 ```
 
 ---
