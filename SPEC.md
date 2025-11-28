@@ -1,3 +1,10 @@
+# Implementation Phases
+
+- **PHASE 1**: Core window management, layout, capture, display info, and smart focus tools
+- **PHASE 2**: Enhanced GUI debugging with accessibility inspection, visual comparison, and interaction simulation
+
+---
+
 # Reference Material
 
 - MCP Server for windows capture with Yabai Window Manager: https://github.com/huegli/capture-win-mcp
@@ -48,6 +55,36 @@
 
 ---
 
+# PHASE 2: Enhanced GUI Debugging Tools
+
+## Capture Tools (Enhanced)
+- `capture_region` - Capture a specific rectangular region of a window
+- `capture_element` - Capture a specific UI element by accessibility identifier or label
+- `capture_sequence` - Capture multiple frames at intervals for animations/transitions
+
+## Inspection Tools
+- `get_accessibility_tree` - Retrieve the accessibility tree for a window (macOS Accessibility API)
+- `find_element` - Find UI elements matching a query (role, label, etc.)
+- `get_element_properties` - Get detailed properties of a specific element (bounds, enabled, visible, actions)
+
+## Comparison Tools
+- `compare_screenshots` - Generate a visual diff between two screenshots with difference percentage and regions
+- `compare_element_state` - Compare current element state against expected state (semantic comparison)
+- `compare_layout` - Compare layout/positioning of elements against expected layout
+
+## Interaction Tools
+- `simulate_click` - Simulate a mouse click at coordinates or on an element
+- `simulate_input` - Simulate keyboard input to a focused element
+- `trigger_ui_state` - Force a specific UI state for testing (hover, pressed, focused, disabled)
+
+## Debug Session Tools
+- `start_debug_session` - Begin a debug session with automatic state tracking and baseline capture
+- `capture_debug_snapshot` - Capture a labeled snapshot within a session
+- `get_session_history` - Get all snapshots and comparisons from a debug session
+- `end_debug_session` - End session and optionally generate summary report
+
+---
+
 # Resources to implement
 
 ## Dynamic Resources (with URI templates)
@@ -61,6 +98,12 @@
 - `aerospace://displays` - Complete display configuration (resolution, scale, size, arrangement, category)
 - `aerospace://displays/{display_id}` - Individual display details including assigned workspaces
 
+## PHASE 2: GUI Debugging Resources
+- `aerospace://window/{window_id}/accessibility` - Full accessibility tree for a window
+- `aerospace://window/{window_id}/elements` - Flat list of all accessible elements with bounds
+- `aerospace://debug/sessions` - List of active and recent debug sessions
+- `aerospace://debug/session/{session_id}` - Details of a specific debug session
+
 ---
 
 #  Prompts to implement
@@ -71,7 +114,7 @@
 - `presentation_layout` - "Arrange my windows for a presentation or screen sharing session"
 
 ## Development  Prompts
-- `debug_app_gui` - "Debug the GUI of an app under development by comparing what is expected vs what is actually on screen, using the capture tool functionality"
+- `debug_app_gui` - "Debug the GUI of an app under development by comparing what is expected vs what is actually on screen, using the capture tool functionality" (PHASE 2: Enhanced with accessibility tree inspection, visual diff generation, element state comparison, interaction simulation, and debug session tracking)
 
 # Prompts to consider for the future (DO NOT IMPLEMENT)
 ## Workspace Setup Prompts

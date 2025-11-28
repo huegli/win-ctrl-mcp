@@ -7,15 +7,21 @@ This document describes the API for the AeroSpace Window Manager MCP Server, inc
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Tools](#tools)
+2. [Tools - Phase 1](#tools)
    - [Window Management](#window-management-tools)
    - [Layout Management](#layout-management-tools)
    - [Capture Tools](#capture-tools)
    - [Display Information Tools](#display-information-tools)
    - [Smart Focus Tools](#smart-focus-tools)
-3. [Resources](#resources)
-4. [Prompts](#prompts)
-5. [Error Handling](#error-handling)
+3. [Tools - Phase 2](#phase-2-enhanced-gui-debugging-tools)
+   - [Capture Tools (Enhanced)](#capture-tools-enhanced)
+   - [Inspection Tools](#inspection-tools)
+   - [Comparison Tools](#comparison-tools)
+   - [Interaction Tools](#interaction-tools)
+   - [Debug Session Tools](#debug-session-tools)
+4. [Resources](#resources)
+5. [Prompts](#prompts)
+6. [Error Handling](#error-handling)
 
 ---
 
@@ -1047,6 +1053,811 @@ await move_app_category_to_monitor(
 
 ---
 
+## Phase 2: Enhanced GUI Debugging Tools
+
+These tools enable AI agents to debug GUI applications by inspecting accessibility trees, comparing visual states, and simulating user interactions.
+
+### Requirements (Phase 2)
+
+- macOS Accessibility permissions must be granted (System Preferences > Privacy & Security > Accessibility)
+- `pyobjc-framework-ApplicationServices` for accessibility APIs
+- `pyobjc-framework-Quartz` for advanced screen capture
+
+---
+
+### Capture Tools (Enhanced)
+
+#### `capture_region`
+
+Capture a specific rectangular region of a window.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `window_id` | integer | No | Window ID (defaults to focused window) |
+| `region` | object | Yes | Region to capture: `{x, y, width, height}` |
+| `output_path` | string | No | Path to save screenshot (defaults to temp file) |
+| `format` | string | No | Image format: `png`, `jpg` (defaults to `png`) |
+
+**Returns:**
+
+```json
+{
+  "success": true,
+  "file_path": "/tmp/region_capture.png",
+  "region": {"x": 100, "y": 50, "width": 200, "height": 100},
+  "window_id": 1234
+}
+```
+
+**Examples:**
+
+```python
+# Capture a specific region of the focused window
+await capture_region(
+    region={"x": 100, "y": 50, "width": 200, "height": 100}
+)
+
+# Capture region from specific window
+await capture_region(
+    window_id=1234,
+    region={"x": 0, "y": 0, "width": 400, "height": 300},
+    output_path="/tmp/header_region.png"
+)
+```
+
+---
+
+#### `capture_element`
+
+Capture a specific UI element by accessibility identifier or label.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `window_id` | integer | No | Window ID (defaults to focused window) |
+| `element_query` | object | Yes | Query to find element: `{role, label, identifier}` |
+| `padding` | integer | No | Pixels of padding around element (default: 0) |
+| `output_path` | string | No | Path to save screenshot |
+
+**Returns:**
+
+```json
+{
+  "success": true,
+  "file_path": "/tmp/element_capture.png",
+  "element": {
+    "role": "button",
+    "label": "Submit",
+    "bounds": {"x": 150, "y": 200, "width": 80, "height": 32}
+  }
+}
+```
+
+**Examples:**
+
+```python
+# Capture a button by label
+await capture_element(
+    element_query={"role": "button", "label": "Submit"},
+    padding=10
+)
+
+# Capture a text field by identifier
+await capture_element(
+    window_id=1234,
+    element_query={"identifier": "usernameField"}
+)
+```
+
+---
+
+#### `capture_sequence`
+
+Capture multiple frames at intervals for animations/transitions.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `window_id` | integer | No | Window ID (defaults to focused window) |
+| `frames` | integer | Yes | Number of frames to capture |
+| `interval_ms` | integer | Yes | Milliseconds between frames |
+| `output_dir` | string | No | Directory for frame files |
+| `region` | object | No | Optional region to capture |
+
+**Returns:**
+
+```json
+{
+  "success": true,
+  "frames": [
+    {"index": 0, "timestamp": 0, "file_path": "/tmp/seq/frame_000.png"},
+    {"index": 1, "timestamp": 100, "file_path": "/tmp/seq/frame_001.png"},
+    {"index": 2, "timestamp": 200, "file_path": "/tmp/seq/frame_002.png"}
+  ],
+  "total_duration_ms": 200
+}
+```
+
+**Examples:**
+
+```python
+# Capture 10 frames at 100ms intervals
+await capture_sequence(
+    frames=10,
+    interval_ms=100,
+    output_dir="/tmp/animation_debug/"
+)
+
+# Capture animation in specific region
+await capture_sequence(
+    window_id=1234,
+    frames=20,
+    interval_ms=50,
+    region={"x": 100, "y": 100, "width": 200, "height": 200}
+)
+```
+
+---
+
+### Inspection Tools
+
+#### `get_accessibility_tree`
+
+Retrieve the accessibility tree for a window using macOS Accessibility API.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `window_id` | integer | No | Window ID (defaults to focused window) |
+| `depth` | integer | No | Maximum depth to traverse (default: unlimited) |
+| `include_hidden` | boolean | No | Include hidden elements (default: false) |
+
+**Returns:**
+
+```json
+{
+  "window_id": 1234,
+  "app_name": "MyApp",
+  "root": {
+    "role": "window",
+    "title": "Main Window",
+    "bounds": {"x": 0, "y": 0, "width": 800, "height": 600},
+    "children": [
+      {
+        "role": "toolbar",
+        "bounds": {"x": 0, "y": 0, "width": 800, "height": 44},
+        "children": [
+          {
+            "role": "button",
+            "label": "New",
+            "enabled": true,
+            "bounds": {"x": 10, "y": 8, "width": 60, "height": 28}
+          }
+        ]
+      },
+      {
+        "role": "scrollarea",
+        "bounds": {"x": 0, "y": 44, "width": 800, "height": 556},
+        "children": []
+      }
+    ]
+  }
+}
+```
+
+**Examples:**
+
+```python
+# Get full accessibility tree
+tree = await get_accessibility_tree()
+
+# Get shallow tree (depth 2)
+tree = await get_accessibility_tree(depth=2)
+
+# Include hidden elements
+tree = await get_accessibility_tree(include_hidden=True)
+```
+
+---
+
+#### `find_element`
+
+Find UI elements matching a query.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `window_id` | integer | No | Window ID (defaults to focused window) |
+| `query` | object | Yes | Query object with match criteria |
+
+**Query Options:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `role` | string | Element role (button, textfield, etc.) |
+| `label` | string | Exact label match |
+| `label_contains` | string | Partial label match |
+| `identifier` | string | Accessibility identifier |
+| `enabled` | boolean | Filter by enabled state |
+| `visible` | boolean | Filter by visibility |
+
+**Returns:**
+
+```json
+{
+  "matches": [
+    {
+      "role": "button",
+      "label": "Submit Form",
+      "bounds": {"x": 300, "y": 500, "width": 100, "height": 40},
+      "enabled": true,
+      "path": "window/dialog/form/button[2]"
+    }
+  ]
+}
+```
+
+**Examples:**
+
+```python
+# Find all buttons
+buttons = await find_element(query={"role": "button"})
+
+# Find element by partial label
+elements = await find_element(query={"label_contains": "Submit"})
+
+# Find enabled text fields
+fields = await find_element(query={
+    "role": "textfield",
+    "enabled": True
+})
+```
+
+---
+
+#### `get_element_properties`
+
+Get detailed properties of a specific element.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `window_id` | integer | No | Window ID (defaults to focused window) |
+| `element_path` | string | Yes | Path to element (e.g., "window/toolbar/button[0]") |
+
+**Returns:**
+
+```json
+{
+  "role": "button",
+  "subrole": "none",
+  "label": "New Document",
+  "title": "New",
+  "description": "Create a new document",
+  "enabled": true,
+  "focused": false,
+  "visible": true,
+  "bounds": {"x": 10, "y": 8, "width": 60, "height": 28},
+  "actions": ["press"],
+  "value": null,
+  "attributes": {
+    "accessibilityIdentifier": "newDocButton"
+  }
+}
+```
+
+**Examples:**
+
+```python
+# Get properties of first toolbar button
+props = await get_element_properties(
+    element_path="window/toolbar/button[0]"
+)
+
+# Check if element is enabled
+props = await get_element_properties(
+    window_id=1234,
+    element_path="window/form/submitButton"
+)
+print(f"Button enabled: {props['enabled']}")
+```
+
+---
+
+### Comparison Tools
+
+#### `compare_screenshots`
+
+Generate a visual diff between two screenshots.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `baseline` | string | Yes | Path to baseline/expected image |
+| `actual` | string | Yes | Path to actual/current image |
+| `output_diff` | string | No | Path to save diff image |
+| `threshold` | float | No | Difference tolerance (0.0-1.0, default: 0.01) |
+
+**Returns:**
+
+```json
+{
+  "match": false,
+  "difference_percentage": 3.2,
+  "diff_image": "/tmp/diff.png",
+  "diff_regions": [
+    {
+      "bounds": {"x": 150, "y": 200, "width": 80, "height": 32},
+      "difference_percentage": 45.2,
+      "description": "Significant difference in button region"
+    }
+  ],
+  "dimensions_match": true,
+  "baseline_dimensions": {"width": 800, "height": 600},
+  "actual_dimensions": {"width": 800, "height": 600}
+}
+```
+
+**Examples:**
+
+```python
+# Compare two screenshots
+result = await compare_screenshots(
+    baseline="/tmp/expected.png",
+    actual="/tmp/actual.png",
+    output_diff="/tmp/diff.png"
+)
+
+if not result["match"]:
+    print(f"Difference: {result['difference_percentage']}%")
+    for region in result["diff_regions"]:
+        print(f"  Region at {region['bounds']}: {region['difference_percentage']}%")
+```
+
+---
+
+#### `compare_element_state`
+
+Compare current element state against expected state.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `window_id` | integer | No | Window ID (defaults to focused window) |
+| `element_path` | string | Yes | Path to element |
+| `expected` | object | Yes | Expected property values |
+
+**Expected Object Options:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `label` | string | Expected label |
+| `enabled` | boolean | Expected enabled state |
+| `visible` | boolean | Expected visibility |
+| `value` | any | Expected value |
+| `bounds.width` | object | Width constraints: `{min, max}` |
+| `bounds.height` | object | Height constraints: `{min, max}` |
+
+**Returns:**
+
+```json
+{
+  "match": false,
+  "mismatches": [
+    {
+      "property": "enabled",
+      "expected": true,
+      "actual": false,
+      "message": "Button is disabled but expected to be enabled"
+    }
+  ],
+  "matches": [
+    {"property": "label", "value": "Submit"},
+    {"property": "visible", "value": true}
+  ]
+}
+```
+
+**Examples:**
+
+```python
+# Check button state
+result = await compare_element_state(
+    element_path="window/form/button[0]",
+    expected={
+        "label": "Submit",
+        "enabled": True,
+        "bounds.width": {"min": 80, "max": 120}
+    }
+)
+
+if not result["match"]:
+    for mismatch in result["mismatches"]:
+        print(f"Mismatch: {mismatch['message']}")
+```
+
+---
+
+#### `compare_layout`
+
+Compare layout/positioning of elements against expected layout.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `window_id` | integer | No | Window ID (defaults to focused window) |
+| `expected_layout` | object | Yes | Expected layout specification |
+
+**Layout Specification:**
+
+```json
+{
+  "element_name": {
+    "role": "string",
+    "position": "top|bottom|left|right|center|fill",
+    "width": number,
+    "height": number,
+    "margin": number
+  }
+}
+```
+
+**Returns:**
+
+```json
+{
+  "match": false,
+  "layout_issues": [
+    {
+      "element": "sidebar",
+      "expected": "position: left, width: 200",
+      "actual": "position: left, width: 150",
+      "issue": "Width mismatch: expected 200px, got 150px"
+    }
+  ],
+  "verified": [
+    {"element": "header", "status": "OK"},
+    {"element": "content", "status": "OK"}
+  ]
+}
+```
+
+**Examples:**
+
+```python
+# Verify layout structure
+result = await compare_layout(
+    expected_layout={
+        "header": {"role": "toolbar", "position": "top", "height": 44},
+        "sidebar": {"role": "list", "position": "left", "width": 200},
+        "content": {"role": "scrollarea", "position": "fill"}
+    }
+)
+```
+
+---
+
+### Interaction Tools
+
+#### `simulate_click`
+
+Simulate a mouse click at coordinates or on an element.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `window_id` | integer | No | Window ID (defaults to focused window) |
+| `target` | object | Yes | Click target (coordinates or element query) |
+| `click_type` | string | No | Type: `single`, `double`, `right` (default: single) |
+
+**Target Options:**
+
+- `{"coordinates": {"x": 100, "y": 200}}` - Click at specific coordinates
+- `{"element_query": {"role": "button", "label": "Submit"}}` - Click on element
+
+**Returns:**
+
+```json
+{
+  "success": true,
+  "clicked_at": {"x": 350, "y": 520},
+  "element_clicked": {
+    "role": "button",
+    "label": "Submit"
+  }
+}
+```
+
+**Examples:**
+
+```python
+# Click on element by query
+await simulate_click(
+    target={"element_query": {"role": "button", "label": "Submit"}}
+)
+
+# Click at specific coordinates
+await simulate_click(
+    target={"coordinates": {"x": 100, "y": 200}}
+)
+
+# Double-click
+await simulate_click(
+    target={"element_query": {"role": "listitem", "label": "File.txt"}},
+    click_type="double"
+)
+```
+
+---
+
+#### `simulate_input`
+
+Simulate keyboard input to a focused element.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `window_id` | integer | No | Window ID (defaults to focused window) |
+| `text` | string | Yes | Text to input |
+| `element_query` | object | No | Element to focus before typing |
+| `clear_first` | boolean | No | Clear existing content first (default: false) |
+
+**Returns:**
+
+```json
+{
+  "success": true,
+  "text_entered": "Hello World",
+  "target_element": {
+    "role": "textfield",
+    "label": "Name"
+  }
+}
+```
+
+**Examples:**
+
+```python
+# Type into focused element
+await simulate_input(text="Hello World")
+
+# Type into specific field
+await simulate_input(
+    text="user@example.com",
+    element_query={"role": "textfield", "label": "Email"},
+    clear_first=True
+)
+```
+
+---
+
+#### `trigger_ui_state`
+
+Force a specific UI state for testing appearance.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `window_id` | integer | No | Window ID (defaults to focused window) |
+| `element_path` | string | Yes | Path to element |
+| `state` | string | Yes | State to trigger: `hover`, `pressed`, `focused`, `disabled` |
+| `duration_ms` | integer | No | How long to hold state (default: 1000) |
+
+**Returns:**
+
+```json
+{
+  "success": true,
+  "element": "window/form/button[0]",
+  "state_triggered": "hover",
+  "duration_ms": 1000
+}
+```
+
+**Examples:**
+
+```python
+# Trigger hover state for screenshot
+await trigger_ui_state(
+    element_path="window/form/button[0]",
+    state="hover",
+    duration_ms=2000
+)
+
+# Check focused appearance
+await trigger_ui_state(
+    element_path="window/form/textfield[0]",
+    state="focused"
+)
+```
+
+---
+
+### Debug Session Tools
+
+#### `start_debug_session`
+
+Begin a debug session with automatic state tracking.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `app_name` | string | No | App to debug (defaults to focused window's app) |
+| `session_name` | string | No | Name for the session |
+| `baseline_capture` | boolean | No | Capture baseline screenshot (default: true) |
+| `capture_accessibility` | boolean | No | Capture accessibility tree (default: true) |
+
+**Returns:**
+
+```json
+{
+  "session_id": "debug_abc123",
+  "session_name": "button_color_debug",
+  "app_name": "MyApp",
+  "window_id": 1234,
+  "baseline_capture": "/tmp/debug_sessions/debug_abc123/baseline.png",
+  "baseline_accessibility": "/tmp/debug_sessions/debug_abc123/baseline_tree.json",
+  "started_at": "2025-01-15T10:30:00Z"
+}
+```
+
+**Examples:**
+
+```python
+# Start debug session
+session = await start_debug_session(
+    app_name="MyApp",
+    session_name="button_color_debug"
+)
+print(f"Session ID: {session['session_id']}")
+```
+
+---
+
+#### `capture_debug_snapshot`
+
+Capture a labeled snapshot within a session.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `session_id` | string | Yes | Debug session ID |
+| `label` | string | Yes | Label for this snapshot |
+| `note` | string | No | Optional note about changes made |
+| `compare_to_baseline` | boolean | No | Auto-compare to baseline (default: true) |
+
+**Returns:**
+
+```json
+{
+  "snapshot_id": "snap_001",
+  "label": "after_css_fix",
+  "file_path": "/tmp/debug_sessions/debug_abc123/snap_001_after_css_fix.png",
+  "note": "Changed button color from gray to blue",
+  "timestamp": "2025-01-15T10:35:00Z",
+  "comparison": {
+    "match": false,
+    "difference_percentage": 1.2,
+    "diff_image": "/tmp/debug_sessions/debug_abc123/diff_snap_001.png"
+  }
+}
+```
+
+**Examples:**
+
+```python
+# Capture snapshot after making changes
+snapshot = await capture_debug_snapshot(
+    session_id="debug_abc123",
+    label="after_css_fix",
+    note="Changed button color from gray to blue"
+)
+print(f"Difference: {snapshot['comparison']['difference_percentage']}%")
+```
+
+---
+
+#### `get_session_history`
+
+Get all snapshots and comparisons from a debug session.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `session_id` | string | Yes | Debug session ID |
+
+**Returns:**
+
+```json
+{
+  "session_id": "debug_abc123",
+  "session_name": "button_color_debug",
+  "app_name": "MyApp",
+  "started_at": "2025-01-15T10:30:00Z",
+  "snapshots": [
+    {
+      "id": "baseline",
+      "timestamp": "2025-01-15T10:30:00Z",
+      "file_path": "/tmp/debug_sessions/debug_abc123/baseline.png"
+    },
+    {
+      "id": "snap_001",
+      "label": "after_css_fix",
+      "timestamp": "2025-01-15T10:35:00Z",
+      "file_path": "/tmp/debug_sessions/debug_abc123/snap_001_after_css_fix.png",
+      "note": "Changed button color from gray to blue"
+    }
+  ],
+  "comparisons": [
+    {
+      "baseline": "baseline",
+      "snapshot": "snap_001",
+      "difference_percentage": 1.2,
+      "diff_image": "/tmp/debug_sessions/debug_abc123/diff_snap_001.png"
+    }
+  ]
+}
+```
+
+---
+
+#### `end_debug_session`
+
+End a debug session and optionally generate a summary report.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `session_id` | string | Yes | Debug session ID |
+| `generate_report` | boolean | No | Generate HTML summary report (default: false) |
+| `cleanup` | boolean | No | Delete temporary files (default: false) |
+
+**Returns:**
+
+```json
+{
+  "success": true,
+  "session_id": "debug_abc123",
+  "duration_seconds": 300,
+  "total_snapshots": 5,
+  "report_path": "/tmp/debug_sessions/debug_abc123/report.html",
+  "issues_found": [
+    "Button hover state not implemented",
+    "Toolbar alignment off by 2px"
+  ]
+}
+```
+
+**Examples:**
+
+```python
+# End session with report
+result = await end_debug_session(
+    session_id="debug_abc123",
+    generate_report=True
+)
+print(f"Report: {result['report_path']}")
+```
+
+---
+
 ## Resources
 
 Resources provide read-only access to AeroSpace state information. They use URI templates and return JSON data.
@@ -1407,6 +2218,180 @@ Individual display details including assigned workspaces.
 
 ---
 
+### Phase 2: GUI Debugging Resources
+
+#### `aerospace://window/{window_id}/accessibility`
+
+Full accessibility tree for a window.
+
+**URI Template:** `aerospace://window/{window_id}/accessibility`
+
+**Parameters:**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `window_id` | integer | The window ID |
+
+**Response:**
+
+```json
+{
+  "window_id": 1234,
+  "app_name": "MyApp",
+  "accessibility_tree": {
+    "role": "window",
+    "title": "Main Window",
+    "bounds": {"x": 0, "y": 0, "width": 800, "height": 600},
+    "children": [
+      {
+        "role": "toolbar",
+        "bounds": {"x": 0, "y": 0, "width": 800, "height": 44},
+        "children": [
+          {"role": "button", "label": "New", "enabled": true},
+          {"role": "button", "label": "Open", "enabled": true}
+        ]
+      }
+    ]
+  },
+  "element_count": 47,
+  "captured_at": "2025-01-15T10:30:00Z"
+}
+```
+
+---
+
+#### `aerospace://window/{window_id}/elements`
+
+Flat list of all accessible elements with bounds.
+
+**URI Template:** `aerospace://window/{window_id}/elements`
+
+**Parameters:**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `window_id` | integer | The window ID |
+
+**Response:**
+
+```json
+{
+  "window_id": 1234,
+  "app_name": "MyApp",
+  "elements": [
+    {
+      "path": "window",
+      "role": "window",
+      "title": "Main Window",
+      "bounds": {"x": 0, "y": 0, "width": 800, "height": 600}
+    },
+    {
+      "path": "window/toolbar",
+      "role": "toolbar",
+      "bounds": {"x": 0, "y": 0, "width": 800, "height": 44}
+    },
+    {
+      "path": "window/toolbar/button[0]",
+      "role": "button",
+      "label": "New",
+      "enabled": true,
+      "bounds": {"x": 10, "y": 8, "width": 60, "height": 28}
+    },
+    {
+      "path": "window/toolbar/button[1]",
+      "role": "button",
+      "label": "Open",
+      "enabled": true,
+      "bounds": {"x": 80, "y": 8, "width": 60, "height": 28}
+    }
+  ],
+  "total_elements": 47
+}
+```
+
+---
+
+#### `aerospace://debug/sessions`
+
+List of active and recent debug sessions.
+
+**URI:** `aerospace://debug/sessions`
+
+**Response:**
+
+```json
+{
+  "active_sessions": [
+    {
+      "session_id": "debug_abc123",
+      "session_name": "button_color_debug",
+      "app_name": "MyApp",
+      "window_id": 1234,
+      "started_at": "2025-01-15T10:30:00Z",
+      "snapshot_count": 3
+    }
+  ],
+  "recent_sessions": [
+    {
+      "session_id": "debug_xyz789",
+      "session_name": "layout_fix",
+      "app_name": "OtherApp",
+      "started_at": "2025-01-14T15:00:00Z",
+      "ended_at": "2025-01-14T16:30:00Z",
+      "snapshot_count": 8,
+      "report_path": "/tmp/debug_sessions/debug_xyz789/report.html"
+    }
+  ]
+}
+```
+
+---
+
+#### `aerospace://debug/session/{session_id}`
+
+Details of a specific debug session.
+
+**URI Template:** `aerospace://debug/session/{session_id}`
+
+**Parameters:**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `session_id` | string | The debug session ID |
+
+**Response:**
+
+```json
+{
+  "session_id": "debug_abc123",
+  "session_name": "button_color_debug",
+  "app_name": "MyApp",
+  "window_id": 1234,
+  "started_at": "2025-01-15T10:30:00Z",
+  "status": "active",
+  "baseline": {
+    "screenshot": "/tmp/debug_sessions/debug_abc123/baseline.png",
+    "accessibility_tree": "/tmp/debug_sessions/debug_abc123/baseline_tree.json"
+  },
+  "snapshots": [
+    {
+      "id": "snap_001",
+      "label": "after_css_fix",
+      "timestamp": "2025-01-15T10:35:00Z",
+      "file_path": "/tmp/debug_sessions/debug_abc123/snap_001.png",
+      "note": "Changed button color",
+      "difference_percentage": 1.2
+    }
+  ],
+  "issues_identified": [
+    "Button hover state missing",
+    "Alignment issue in toolbar"
+  ]
+}
+```
+
+---
+
 ## Prompts
 
 Prompts provide pre-configured interaction patterns for common window management tasks.
@@ -1595,7 +2580,7 @@ workspace 2 if you need to run commands during the demo.
 
 ### `debug_app_gui`
 
-Debug the GUI of an application by comparing expected vs actual screen appearance.
+Debug the GUI of an application by comparing expected vs actual screen appearance. (Phase 2: Enhanced with accessibility inspection, visual diff, element state comparison, and debug sessions)
 
 **Description:** "Debug the GUI of an app under development by comparing what is expected vs what is actually on screen, using the capture tool functionality"
 
@@ -1604,9 +2589,12 @@ Debug the GUI of an application by comparing expected vs actual screen appearanc
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `app_name` | string | No | The app to debug (defaults to focused window's app) |
-| `expected_image` | string | No | Path to expected/reference screenshot |
+| `mode` | string | No | Debug mode: `visual`, `structural`, `interactive`, `full` (Phase 2) |
+| `baseline` | string | No | Path to baseline image OR session ID to compare against (Phase 2) |
+| `element_focus` | string | No | Specific element to focus debugging on (Phase 2) |
+| `auto_capture` | boolean | No | Automatically capture after each code change (Phase 2) |
 
-**Example Interaction:**
+**Example Interaction (Phase 1 - Basic):**
 
 ```
 User: /debug_app_gui app_name="MyApp"
@@ -1639,19 +2627,98 @@ Possible causes:
 Would you like me to capture again after you make changes to compare?
 ```
 
+**Example Interaction (Phase 2 - Full Debug):**
+
+```
+User: /debug_app_gui app_name="MyApp" mode="full"
+Assistant: I'll help you debug MyApp's GUI. Starting a full debug session...
+
+[Starting debug session: debug_myapp_001]
+
+**1. Baseline Capture**
+- Window: "MyApp - Main Window" (ID: 4521)
+- Dimensions: 1200x800
+- Screenshot: /tmp/debug_sessions/debug_myapp_001/baseline.png
+
+**2. Accessibility Tree Analysis**
+Found 47 UI elements:
+- 1 window
+- 2 toolbars (24 buttons)
+- 1 sidebar (list with 8 items)
+- 1 main content area (scroll view)
+- 12 labels, 6 text fields
+
+**3. Visual Analysis**
+Scanning for common issues...
+- [✓] Color contrast: PASS
+- [✓] Element overlap: PASS
+- [!] Alignment issue: Toolbar button "Export" appears 2px lower than siblings
+- [✓] Text truncation: PASS
+
+**4. Interactive Element Audit**
+Testing hover/click states on all 30 buttons...
+- [!] Button "Submit" (window/form/button[0]): Shows no visual feedback on hover
+- [✓] All other buttons: Visual feedback OK
+
+**Summary of Issues Found:**
+1. Toolbar alignment: "Export" button misaligned by 2px
+2. Missing hover state: "Submit" button has no hover effect
+
+Would you like me to:
+1. Capture detailed screenshots of these issues?
+2. Show the accessibility properties for the problematic elements?
+3. Generate a diff after you make changes?
+
+User: Show me the Submit button issue
+Assistant: Let me capture and analyze the Submit button...
+
+**Element Details: Submit Button**
+- Path: window/form/button[0]
+- Bounds: x=300, y=500, width=100, height=40
+- Label: "Submit"
+- Enabled: true
+- Focused: false
+
+**State Captures:**
+1. Normal state: /tmp/debug_sessions/debug_myapp_001/submit_normal.png
+2. Hover state: /tmp/debug_sessions/debug_myapp_001/submit_hover.png
+
+**Visual Comparison:**
+Comparing normal vs hover states...
+- Difference: 0.0% (identical)
+- Issue confirmed: No visual change on hover
+
+The button has no hover style defined. Make your changes and say "check again" to recapture.
+```
+
 **Prompt Template:**
 
 ```
 Help debug GUI issues by capturing and analyzing window screenshots.
 
-Steps:
+Phase 1 Steps:
 1. Use capture_window to capture the app's current appearance
 2. If a reference image is provided, compare visually
 3. If description is provided, analyze the capture for discrepancies
 4. Suggest possible causes for visual differences
 5. Offer to recapture after changes for comparison
 
-Use the capture tools to create before/after comparisons during debugging.
+Phase 2 Steps (Enhanced):
+1. Start a debug session with start_debug_session
+2. Capture baseline screenshot and accessibility tree
+3. Based on mode:
+   - visual: Use compare_screenshots to generate visual diffs
+   - structural: Use get_accessibility_tree and compare_element_state
+   - interactive: Use trigger_ui_state to test hover/click/focus states
+   - full: Run all analyses
+4. Use find_element and get_element_properties for element inspection
+5. Use capture_element for focused element screenshots
+6. Use capture_debug_snapshot to track changes during iteration
+7. Generate report with end_debug_session
+
+Tools used: capture_window, capture_element, capture_sequence, get_accessibility_tree,
+find_element, get_element_properties, compare_screenshots, compare_element_state,
+simulate_click, trigger_ui_state, start_debug_session, capture_debug_snapshot
 ```
 
 ---
@@ -1686,6 +2753,21 @@ All tools return structured error responses when operations fail.
 | `COMMAND_FAILED` | AeroSpace CLI command failed | Check the error details for CLI output |
 | `PERMISSION_DENIED` | Accessibility permissions not granted | Grant accessibility permissions in System Settings |
 | `CAPTURE_FAILED` | Screenshot capture failed | Check screencapture permissions in System Settings |
+
+### Phase 2 Error Codes
+
+| Code | Description | Resolution |
+|------|-------------|------------|
+| `ACCESSIBILITY_NOT_ENABLED` | Accessibility API access denied | Grant accessibility permissions in System Settings > Privacy & Security |
+| `ELEMENT_NOT_FOUND` | UI element matching query not found | Verify element exists with `get_accessibility_tree` |
+| `INVALID_ELEMENT_PATH` | Element path is malformed or invalid | Use format: `window/container/element[index]` |
+| `SESSION_NOT_FOUND` | Debug session ID not found | Check active sessions with `aerospace://debug/sessions` |
+| `SESSION_EXPIRED` | Debug session has expired or ended | Start a new session with `start_debug_session` |
+| `COMPARISON_FAILED` | Screenshot comparison failed | Verify both images exist and have valid formats |
+| `DIMENSIONS_MISMATCH` | Images have different dimensions | Ensure baseline and actual images are same size |
+| `INTERACTION_FAILED` | Click/input simulation failed | Verify element is visible, enabled, and accessible |
+| `INVALID_REGION` | Capture region is invalid or out of bounds | Check region coordinates against window bounds |
+| `SEQUENCE_CAPTURE_TIMEOUT` | Animation capture exceeded timeout | Reduce frame count or increase interval |
 
 ### Example Error Responses
 
