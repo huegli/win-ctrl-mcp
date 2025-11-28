@@ -10,6 +10,7 @@ This document describes the API for the AeroSpace Window Manager MCP Server, inc
 2. [Tools](#tools)
    - [Window Management](#window-management-tools)
    - [Layout Management](#layout-management-tools)
+   - [Capture Tools](#capture-tools)
 3. [Resources](#resources)
 4. [Prompts](#prompts)
 5. [Error Handling](#error-handling)
@@ -26,6 +27,7 @@ The AeroSpace MCP Server provides programmatic control over the AeroSpace tiling
 - Python >= 3.10
 - FastMCP SDK
 - The `aerospace` CLI must be available in PATH
+- The macOS `screencapture` CLI utility (for capture tools)
 
 ### Command Execution
 
@@ -302,6 +304,8 @@ aerospace close --window-id 1234
 
 Toggle fullscreen mode for the focused window.
 
+> **Note:** This uses AeroSpace's native fullscreen, not macOS native fullscreen (`macos-native-fullscreen`).
+
 **Parameters:**
 
 | Name | Type | Required | Description |
@@ -527,6 +531,121 @@ await balance_sizes()
 **AeroSpace CLI equivalent:**
 ```bash
 aerospace balance-sizes
+```
+
+---
+
+### Capture Tools
+
+#### `capture_window`
+
+Capture a screenshot of the currently focused window.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `window_id` | integer | No | Specific window ID to capture (defaults to focused window) |
+| `output_path` | string | No | Path to save the screenshot (defaults to temp file) |
+| `format` | string | No | Image format: `png`, `jpg`, `pdf` (defaults to `png`) |
+
+**Returns:**
+
+```json
+{
+  "success": true,
+  "capture": {
+    "window_id": 1234,
+    "app_name": "Firefox",
+    "title": "GitHub - Mozilla Firefox",
+    "file_path": "/tmp/window_capture_1234.png",
+    "format": "png",
+    "dimensions": {
+      "width": 1920,
+      "height": 1080
+    }
+  }
+}
+```
+
+**Examples:**
+
+```python
+# Capture the focused window
+await capture_window()
+
+# Capture specific window to a custom path
+await capture_window(window_id=1234, output_path="/Users/me/screenshots/app.png")
+
+# Capture as JPEG
+await capture_window(format="jpg")
+```
+
+**macOS CLI equivalent:**
+```bash
+# Capture specific window (interactive selection)
+screencapture -w /path/to/output.png
+
+# Capture window by ID (requires window bounds)
+screencapture -R x,y,w,h /path/to/output.png
+```
+
+---
+
+#### `capture_workspace`
+
+Capture a screenshot of the currently focused workspace (and monitor).
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `workspace` | string | No | Workspace name to capture (defaults to focused workspace) |
+| `output_path` | string | No | Path to save the screenshot (defaults to temp file) |
+| `format` | string | No | Image format: `png`, `jpg`, `pdf` (defaults to `png`) |
+
+**Returns:**
+
+```json
+{
+  "success": true,
+  "capture": {
+    "workspace": "dev",
+    "monitor": "Built-in Retina Display",
+    "file_path": "/tmp/workspace_capture_dev.png",
+    "format": "png",
+    "dimensions": {
+      "width": 2560,
+      "height": 1440
+    },
+    "windows_captured": [
+      {"window_id": 1234, "app_name": "VS Code"},
+      {"window_id": 5678, "app_name": "Terminal"}
+    ]
+  }
+}
+```
+
+**Examples:**
+
+```python
+# Capture the current workspace
+await capture_workspace()
+
+# Capture specific workspace
+await capture_workspace(workspace="dev")
+
+# Capture to custom path as PDF
+await capture_workspace(output_path="/Users/me/workspace.pdf", format="pdf")
+```
+
+**macOS CLI equivalent:**
+```bash
+# Capture entire screen (monitor)
+screencapture /path/to/output.png
+
+# Capture specific display
+screencapture -D 1 /path/to/output.png
 ```
 
 ---
@@ -864,7 +983,54 @@ After suggesting, ask for confirmation before making changes.
 
 ### `focus_mode`
 
-Update this section based on SPEC.md
+Rearrange windows to make the focused window most prominent while keeping others accessible.
+
+**Description:** "Rearrange the windows in the current workspace so that the window that currently has the focus is most prominent but other windows remain visible/accessible, making use of the capture tool functionality"
+
+**Arguments:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `prominence` | string | No | How prominent: `maximize`, `large`, `balanced` (defaults to `large`) |
+
+**Example Interaction:**
+
+```
+User: /focus_mode
+
+Assistant: I'll help you focus on your current work. Let me analyze your workspace...
+
+Current workspace "dev" has 4 windows:
+- VS Code: "project - Visual Studio Code" [FOCUSED]
+- Terminal: "zsh"
+- Chrome: "Documentation"
+- Notes: "Meeting Notes"
+
+I'll rearrange to make VS Code most prominent while keeping others accessible:
+
+Actions taken:
+1. Captured current layout for reference
+2. Set VS Code to take 70% of screen width
+3. Stacked Terminal, Chrome, and Notes in remaining 30%
+4. All windows remain visible and quickly accessible
+
+Your focus layout is ready. The other windows are collapsed but one click away.
+```
+
+**Prompt Template:**
+
+```
+Help the user focus on their current task by making the focused window prominent.
+
+Steps:
+1. Use capture_window to capture current state for reference
+2. Identify the focused window using aerospace://focused
+3. Resize the focused window to take majority of screen space
+4. Arrange other windows in accordion or stacked layout
+5. Ensure all windows remain accessible (not hidden)
+
+The capture functionality helps verify the layout looks correct.
+```
 
 ---
 
@@ -912,7 +1078,64 @@ workspace 2 if you need to run commands during the demo.
 
 ### `debug_app_gui`
 
-Update this section based on SPEC.md
+Debug the GUI of an application by comparing expected vs actual screen appearance.
+
+**Description:** "Debug the GUI of an app under development by comparing what is expected vs what is actually on screen, using the capture tool functionality"
+
+**Arguments:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `app_name` | string | No | The app to debug (defaults to focused window's app) |
+| `expected_image` | string | No | Path to expected/reference screenshot |
+
+**Example Interaction:**
+
+```
+User: /debug_app_gui app_name="MyApp"
+Assistant: I'll help you debug the GUI of MyApp. Let me capture the current state...
+
+Captured MyApp window (window_id: 4521):
+- Title: "MyApp - Main Window"
+- Dimensions: 1200x800
+- Screenshot saved to: /tmp/myapp_capture.png
+
+What would you like to compare against?
+
+1. Provide a reference screenshot path
+2. Describe what you expect to see
+3. I can analyze the current UI for common issues
+
+User: The button in the top-right should be blue, not gray
+Assistant: Let me analyze the captured screenshot...
+
+Analysis of MyApp GUI:
+- Found button in top-right region at coordinates (1150, 50)
+- Current color appears to be #808080 (gray)
+- You expected: blue
+
+Possible causes:
+1. Button state might be "disabled" - check if it's enabled in code
+2. CSS/style not being applied - verify stylesheet is loaded
+3. Theme override - check if dark mode or system theme is affecting it
+
+Would you like me to capture again after you make changes to compare?
+```
+
+**Prompt Template:**
+
+```
+Help debug GUI issues by capturing and analyzing window screenshots.
+
+Steps:
+1. Use capture_window to capture the app's current appearance
+2. If a reference image is provided, compare visually
+3. If description is provided, analyze the capture for discrepancies
+4. Suggest possible causes for visual differences
+5. Offer to recapture after changes for comparison
+
+Use the capture tools to create before/after comparisons during debugging.
+```
 
 ---
 
@@ -945,6 +1168,7 @@ All tools return structured error responses when operations fail.
 | `NO_WINDOW_FOCUSED` | No window is currently focused | Focus a window first |
 | `COMMAND_FAILED` | AeroSpace CLI command failed | Check the error details for CLI output |
 | `PERMISSION_DENIED` | Accessibility permissions not granted | Grant accessibility permissions in System Settings |
+| `CAPTURE_FAILED` | Screenshot capture failed | Check screencapture permissions in System Settings |
 
 ### Example Error Responses
 
@@ -987,6 +1211,22 @@ All tools return structured error responses when operations fail.
     "details": {
       "provided": "diagonal",
       "valid_options": ["left", "right", "up", "down"]
+    }
+  }
+}
+```
+
+**Capture Failed:**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "CAPTURE_FAILED",
+    "message": "Failed to capture window screenshot",
+    "details": {
+      "window_id": 1234,
+      "reason": "Screen recording permission not granted",
+      "suggestion": "Grant screen recording permission in System Settings > Privacy & Security"
     }
   }
 }
