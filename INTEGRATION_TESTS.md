@@ -40,15 +40,21 @@ Create at least 2-3 workspaces with different windows distributed across them.
 - Prompt: "Focus the window to the left of my current window"
 - Expected: Focus shifts to the window on the left
 - Verify: The window that was to the left is now focused
+- Result: The window on the left was focused correctly
 
 **Test: Focus by window ID**
 - First ask: "List all my windows"
 - Then ask: "Focus window ID [pick an ID from the list]"
 - Expected: That specific window receives focus
+- Result: First prompt returned the following:
+```
+I don't have a tool that directly lists all your windows. However, I can capture a screenshot of your current workspace to show you what's visible, which would give you a visual overview of the windows you have open.
+Would you like me to take a screenshot of your workspace to see what windows are currently displayed? Or if you're looking to do something specific with your windows (like reorganizing them, moving them to different monitors, or managing layouts), I can help with that using the window management tools I have available.
+```
 
 **Questions for feedback:**
-- Did the focus move correctly?
-- Was there any visible lag or jank?
+- Did the focus move correctly? Yes
+- Was there any visible lag or jank? No
 
 #### 1.2 Focus Monitor (tool_focus_monitor)
 
@@ -65,6 +71,14 @@ Create at least 2-3 workspaces with different windows distributed across them.
 **Test: Switch workspace by number**
 - Prompt: "Switch to workspace 2"
 - Expected: Workspace 2 becomes active
+- Result: Workspace 2 became active as expected, but I got the following response
+```
+1 stepWTool focus workspaceRequest{
+  `workspace`: `2`
+}Response{"success":false,"error":{"code":"COMMAND_FAILED","message":"AeroSpace command failed: ERROR: Conflicting options: --all, --workspace","details":{"command":["aerospace","list-windows","--all","--workspace","2","--json"],"return_code":1,"stderr":"ERROR: Conflicting options: --all, --workspace"}}}Diagnosing conflicting AeroSpace command options.Same error occurred again. This appears to be a consistent issue with the AeroSpace window manager command. The error indicates there's a conflicting options issue where both --all and --workspace are being passed when they shouldn't be together. This seems like an issue with how the tool is constructing the command internally.
+I should let the user know that there's a persistent error with the workspace switching command.I'm getting the same error when trying to switch to workspace 2. This appears to be a technical issue with the window manager's command construction. The error suggests there's a conflict with how the command is being built internally.
+Is there anything else I can help you with regarding window management, or would you like to try a different approach?
+```
 
 **Test: Switch workspace by name**
 - Prompt: "Switch to the dev workspace"
@@ -75,6 +89,7 @@ Create at least 2-3 workspaces with different windows distributed across them.
 **Test: Move to workspace**
 - Prompt: "Move this window to workspace 3"
 - Expected: Current window moves to workspace 3
+- Result: Works as expected
 
 **Test: Move to monitor**
 - Prompt: "Move this window to my external monitor"
@@ -83,6 +98,7 @@ Create at least 2-3 workspaces with different windows distributed across them.
 **Test: Move by direction**
 - Prompt: "Move this window to the right"
 - Expected: Window position/order changes in the tiling layout
+- Result: Works as expected
 
 #### 1.5 Resize Window (tool_resize_window)
 
